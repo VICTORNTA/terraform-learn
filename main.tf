@@ -1,28 +1,14 @@
 provider "aws" {}
 
-variable "vpc_cidr_block" {
-    
-}
-variable "subnet_cidr_block" {
-    
-}
+variable "vpc_cidr_block" {}
+variable "subnet_cidr_block" {}
 
-variable "avail_zone" {
-  
-} #Envirmental Variable "export TF_VAR_avail_zone="us-east-1a" "
-variable "env_prefix" {
-  
-}
-variable "my_ip" {
-  
-}
-variable "instance_type" {
-  
-}
-variable "public_key_location" {
-  
-}
-
+variable "avail_zone" {} #Envirmental Variable "export TF_VAR_avail_zone="us-east-1a" "
+variable "env_prefix" {}
+variable "my_ip" {}
+variable "instance_type" {}
+variable "public_key_location" {}
+variable "private_key_location" {}
 
 resource "aws_vpc" "myapp-vpc" {
   cidr_block = var.vpc_cidr_block
@@ -137,7 +123,35 @@ resource "aws_instance" "myapp-server" {
 
   key_name = aws_key_pair.ssh-key-myapp.key_name
 
-  user_data = file("entry-script.sh")
+  connection {
+    type = "ssh"
+    host = self.public_ip
+    user = "ec2-user"
+    private_key = file(var.private_key_location)
+  }
+
+
+# Provisioners are not recommended in terraform it is the last resort when your really need it. this is because
+# Provisioners do not really work well
+# Provisioners breaks the "idempotency" concept of terraform
+# in place of provisioners you can use other configuration management tools (Ansible,puppet,chef e.t.c)
+  provisioner "file" { #to copy local file to remote ec2 instance
+    source = "entry-script.sh"
+    destination = "/home/ec2-user/entry-script-on-ec2.sh"
+
+    #you can add a connction block if you want to copy a file to another instance
+  }
+  provisioner "remote-exec" {
+    
+      script = file("entry-script-on-ec2.sh")  
+    
+  }
+
+  provisioner "local-exec" { # use to execute commands on your local machine
+    command = "echo ${self.public_ip} > output.txt"
+    
+  }
+  
   tags = {
     Name = "${var.env_prefix}-server"
   } 
@@ -145,17 +159,3 @@ resource "aws_instance" "myapp-server" {
   
 }
 
-
-output "aws_ami_id" {
-  value = data.aws_ami.latest-amazon-linux-image.id
-  
-}
-
-output "ec2_public_ip" {
-  value = aws_instance.myapp-server.public_ip
-  
-}
-output "ec2_private_ip" {
-  value = aws_instance.myapp-server.private_ip
-  
-}
