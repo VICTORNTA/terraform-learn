@@ -9,3 +9,9 @@
 #tf varable files, may include sensitve data
 *.tfvars
 
+# ignore crash logs
+crash.logs
+
+# Ignore CLI configuration files
+.terraformrc
+terraformrc
