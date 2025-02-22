@@ -1,0 +1,38 @@
+provider "aws" {
+}
+
+variable "vpc_cidr_block" {}
+variable "private_subnet_cidr_blocks" {}
+variable "public_subnet_cidr_blocks" {}
+
+data "aws_availability_zones" "azs" {
+    #uses the default region of the aws provider
+}
+
+module "myapp-vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.19.0"
+  name = "myapp-vpc"
+  cidr = var.vpc_cidr_block
+  private_subnets = var.private_subnet_cidr_blocks
+  public_subnets = var.public_subnet_cidr_blocks
+  azs = data.aws_availability_zones.azs.names
+ 
+  enable_nat_gateway = true
+  single_nat_gateway = true #all private subnet will route their internet traffic through a single gateway
+  enable_dns_hostnames = true
+  
+  tags = {
+    "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+    
+  } 
+
+  public_subnet_tags = {
+    "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+    "kubernetes.io/role/elb" = 1  #elb - elastic load balancer
+  }
+  private_subnet_tags = {
+    "kubernetes.io/cluster/myapp-eks-cluster" = "shared"
+    "kubernetes.io/role/internal-elb" = 1  #internal elastic load balancer
+  }
+}
